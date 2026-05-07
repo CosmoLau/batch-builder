@@ -1,0 +1,57 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          registry-url: https://registry.npmjs.org/
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Read package name and package files
+        id: meta
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          echo "pkg_name=${PKG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Create zip archive
+        run: |
+          ZIP_NAME="${{ steps.meta.outputs.pkg_name }}.zip"
+          zip -r "${ZIP_NAME}" \
+            dist \
+            i18n \
+            logo.png \
+            README* \
+            package.json
+          echo "Created archive: ${ZIP_NAME}"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.meta.outputs.pkg_name }}.zip
+
+      - name: Write changelog
+        run: npx changelogithub # or changelogithub@0.12 to ensure a stable result
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
