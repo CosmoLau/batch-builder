@@ -14,9 +14,9 @@
     },
     "dependencies": {
         "@element-plus/icons-vue": "^2.3.2",
-        "element-plus": "^2.13.6",
+        "element-plus": "^2.13.7",
         "open": "^11.0.0",
-        "vue": "^3.5.32"
+        "vue": "^3.5.34"
     },
     "devDependencies": {
         "@cocos-fe/vite-plugin-cocos-panel": "^1.0.3",
