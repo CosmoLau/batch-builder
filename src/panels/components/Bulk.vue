@@ -9,7 +9,7 @@ import path from 'node:path';
 import { BuildConfig, BundleConfig } from '../../@types/build-config';
 import { FolderOpened, Document } from '@element-plus/icons-vue';
 import open from 'open';
-import { getPackageJson } from '../utils';
+import { getPackageJson, getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
 
 onMounted(() => {
@@ -20,21 +20,19 @@ const appRootDom = inject(keyAppRoot);
 const message = inject(keyMessage)!;
 /** 主项目 package.json 文件 */
 const packageJson = getPackageJson();
-/** 实际构建目录 */
-const buildDir = path.join(getProjectPath(), 'build', packageJson.name);
-function getProjectPath() {
-    return Editor.Project.path;
-}
-function getScenePath() {
-    return getProjectPath() + '/assets/scene';
-}
+/** 默认构建产出位置 */
+const buildDir = getProjectPath("build/" + packageJson.name);
+/** 临时构建配置文件路径 */
+const tempConfigPath = getProjectPath("temp/tempConfig.json");
+/** 获取场景目录 */
 function getSceneDir() {
-    const dir = readdirSync(getScenePath());
-    const dirList = dir.filter((item) => item.endsWith('.scene'));
+    const scenePath = getProjectPath("/assets/scene");
+    const files = readdirSync(scenePath);
+    const dirList = files.filter((item) => item.endsWith('.scene'));
     return dirList.map((item) => {
         return {
             name: item.replace('.scene', ''),
-            path: getScenePath() + '/' + item,
+            path: scenePath + '/' + item,
             checked: false,
         }
     });
@@ -45,14 +43,11 @@ function getBuildConfigPath() {
     if (existsSync(configPath)) {
         return configPath;
     }
-    configPath = path.join(getProjectPath(), 'build-templates\\batch-builder', 'buildConfig_template.json');
+    configPath = getProjectPath("build-templates/batch-builder/buildConfig_template.json");
     if (existsSync(configPath)) {
         return configPath;
     }
     return null;
-}
-function getTempConfigPath() {
-    return path.join(getProjectPath(), 'temp', 'tempConfig.json');
 }
 let buildConfig: BuildConfig = null;
 
@@ -156,16 +151,16 @@ async function build() {
         }
         buildConfig.bundleConfigs = bundleConfig;
         let logName = item + `-${new Date().toLocaleString().replace(/[:\/\\]/g, '-')}.log`;
-        buildConfig.logDest = path.join(getProjectPath(), "temp/batch-builder", logName);
-        let outputPath = path.join(getProjectPath(), "build", buildConfig.outputName);
+        buildConfig.logDest = getProjectPath("temp/batch-builder/" + logName);
+        let outputPath = getProjectPath("build/" + buildConfig.outputName);
         // console.info(`构建输出路径: ${outputPath}`);
         // 检查输出路径是否存在，存在则删除
         if (existsSync(outputPath)) {
             // console.info(`构建输出路径已存在，删除: ${outputPath}`);
             rmSync(outputPath, { recursive: true });
         }
-        writeFileSync(getTempConfigPath(), JSON.stringify(buildConfig, null, 2), 'utf-8');
-        let command = `${cocosFilePath.value} --project ${getProjectPath()} --build "configPath=${getTempConfigPath()}"`;
+        writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2), 'utf-8');
+        let command = `${cocosFilePath.value} --project ${getProjectPath()} --build "configPath=${tempConfigPath}"`;
         console.log("命令行：", command);
         exec(command, () => {
             let logContent = readFileSync(buildConfig.logDest, 'utf-8');
@@ -254,7 +249,7 @@ function openBuildPanel() {
     Editor.Message.request('builder', 'open');
 }
 /** 日志目录路径 */
-const logFolderPath = path.join(getProjectPath(), "temp/batch-builder");
+const logFolderPath = getProjectPath("temp/batch-builder");
 /**
  * 打开日志目录或文件
  * @param logPath 日志文件路径或目录路径
