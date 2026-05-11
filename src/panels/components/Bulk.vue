@@ -10,6 +10,7 @@ import { BuildConfig, BundleConfig } from '../../@types/build-config';
 import { FolderOpened, Document } from '@element-plus/icons-vue';
 import open from 'open';
 import { getPackageJson } from '../utils';
+import extensionPackage from '../../../package.json';
 
 onMounted(() => {
 
@@ -405,7 +406,13 @@ watch(() => ruleForm.buildConfigPath, (val) => {
     <div ref="bulkRef" style="height: 100%;overflow: auto;">
         <el-container style="height: 100%;">
             <el-header>
-                <h1>批量构建工具</h1>
+                <h1>批量构建工具
+                    <el-badge is-dot :offset="[-3, 15]" hidden>
+                        <el-tag effect="plain" round>
+                            v{{ extensionPackage.version }}
+                        </el-tag>
+                    </el-badge>
+                </h1>
             </el-header>
             <el-main>
                 <el-form :disabled="buildButonState" label-position="left" label-width="180px" :model="ruleForm"
