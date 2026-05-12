@@ -1,6 +1,6 @@
 {
     "name": "batch-builder",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "title": "i18n:batch-builder.title",
     "description": "批量构建工具",
     "editor": ">=3.8.7",
