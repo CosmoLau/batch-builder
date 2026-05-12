@@ -8,6 +8,9 @@
     "package_version": 2,
     "type": "module",
     "main": "./dist/browser.cjs",
+    "engines": {
+        "node": "20.15.1"
+    },
     "scripts": {
         "dev": "npm run build -- --mode development",
         "build": "vue-tsc -b && vite build"
@@ -15,6 +18,7 @@
     "dependencies": {
         "@element-plus/icons-vue": "^2.3.2",
         "element-plus": "^2.14.0",
+        "glob": "^13.0.6",
         "open": "^11.0.0",
         "vue": "^3.5.34"
     },

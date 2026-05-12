@@ -11,6 +11,7 @@ import { FolderOpened, Document } from '@element-plus/icons-vue';
 import open from 'open';
 import { getPackageJson, getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
+import { globSync } from 'glob/raw';
 
 onMounted(() => {
     let outputPath = localStorage.getItem("buildOutPutPath")
@@ -19,6 +20,12 @@ onMounted(() => {
     }
 })
 
+console.log(process.version);
+const sceneFiles = globSync("**/*.scene", {
+    cwd: getProjectPath("assets"),
+    absolute: true,
+});
+console.log(sceneFiles);
 const appRootDom = inject(keyAppRoot);
 const message = inject(keyMessage)!;
 /** 主项目 package.json 文件 */
@@ -29,16 +36,25 @@ const buildDir = getProjectPath("build/" + packageJson.name);
 const tempConfigPath = getProjectPath("temp/tempConfig.json");
 /** 获取场景目录 */
 function getSceneDir() {
-    const scenePath = getProjectPath("/assets/scene");
-    const files = readdirSync(scenePath);
-    const dirList = files.filter((item) => item.endsWith('.scene'));
-    return dirList.map((item) => {
+    const sceneFiles = globSync("**/*.scene", {
+        cwd: getProjectPath("assets"),
+        absolute: true,
+    });
+    let sceneList = sceneFiles.map(item => {
+        let fileName = path.basename(item).replace('.scene', '');
+        let relativePath = "db://" + path.relative(getProjectPath(), item);
         return {
-            name: item.replace('.scene', ''),
-            path: scenePath + '/' + item,
+            /** 文件名 */
+            name: fileName,
+            /** 相对路径 */
+            relative: relativePath,
+            /** 绝对路径 */
+            path: item,
+            /** 勾选 */
             checked: false,
         }
-    });
+    })
+    return sceneList;
 }
 /** 获取构建配置文件路径 */
 function getBuildConfigPath() {
@@ -318,7 +334,7 @@ const errLogList = ref([]);
 /** 构建输出路径 */
 const buildOutPutPath = ref<string>(packageJson.name);
 
-watch(buildOutPutPath, val =>{
+watch(buildOutPutPath, val => {
     if (val) localStorage.setItem("buildOutPutPath", val);
 })
 
@@ -458,12 +474,24 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                                 </el-checkbox>
                             </template>
                             <el-option v-for="item in sceneList" :key="item.name" :label="item.name" :value="item.name">
+                                <span>{{ item.name }}</span>
+                                <span style="
+                                color: var(--el-text-color-secondary);
+                                font-size:small">
+                                    ({{ item.relative }})
+                                </span>
                             </el-option>
                         </el-select>
                     </el-form-item>
                     <el-form-item label="初始场景" v-if="buildType == BuildType.MERGE">
                         <el-select v-model="startScene" :append-to="appRootDom" placeholder="请选择初始场景">
                             <el-option v-for="item in sceneList" :key="item.name" :label="item.name" :value="item.name">
+                                <span>{{ item.name }}</span>
+                                <span style="
+                                color: var(--el-text-color-secondary);
+                                font-size:small">
+                                    ({{ item.relative }})
+                                </span>
                             </el-option>
                         </el-select>
                     </el-form-item>
