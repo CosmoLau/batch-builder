@@ -13,7 +13,10 @@ import { getPackageJson, getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
 
 onMounted(() => {
-
+    let outputPath = localStorage.getItem("buildOutPutPath")
+    if (outputPath != null) {
+        buildOutPutPath.value = outputPath;
+    }
 })
 
 const appRootDom = inject(keyAppRoot);
@@ -113,7 +116,7 @@ async function build() {
         buildConfig.name = item;
         buildConfig.startScene = itemUuid;
         buildConfig.buildPath = `project://build`;
-        buildConfig.outputName = packageJson.name + "/" + item;
+        buildConfig.outputName = buildOutPutPath.value + "/" + item;
         buildConfig.taskName = buildConfig.platform + '-' + item;
         if (buildType.value == BuildType.INDIE) {
             buildConfig.scenes = [{
@@ -312,6 +315,12 @@ const buildButonState = ref(false);
 const bulkRef = ref<HTMLDivElement>(null);
 /** 构建失败日志列表 */
 const errLogList = ref([]);
+/** 构建输出路径 */
+const buildOutPutPath = ref<string>(packageJson.name);
+
+watch(buildOutPutPath, val =>{
+    if (val) localStorage.setItem("buildOutPutPath", val);
+})
 
 watch(selected, (val) => {
     if (val.length === 0) {
@@ -458,6 +467,11 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                             </el-option>
                         </el-select>
                     </el-form-item>
+                    <el-form-item label="导出路径">
+                        <el-input v-model="buildOutPutPath" placeholder="请输入构建导出文件夹">
+                            <template #prepend>project://build</template>
+                        </el-input>
+                    </el-form-item>
                     <el-form-item>
                         <el-button type="primary" @click="build" :loading="buildButonState">
                             {{ buildButonState ? '构建中' :
@@ -469,7 +483,8 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                     :stroke-width="isInside ? 20 : 6">
                     <span v-if="isInside">{{ progressContent }}</span>
                 </el-progress>
-                <el-button @click="openFolderOrfile(buildDir)" style="margin-top: 10px;">打开构建目录
+                <el-button @click="openFolderOrfile(getProjectPath('build/' + buildOutPutPath))"
+                    style="margin-top: 10px;">打开导出目录
                     <el-icon class="el-icon--right">
                         <FolderOpened />
                     </el-icon>
