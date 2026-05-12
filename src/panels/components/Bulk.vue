@@ -9,7 +9,7 @@ import path from 'node:path';
 import { BuildConfig, BundleConfig } from '../../@types/build-config';
 import { FolderOpened, Document } from '@element-plus/icons-vue';
 import open from 'open';
-import { getPackageJson, getProjectPath } from '../utils';
+import { getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
 import { globSync } from 'glob/raw';
 
@@ -20,18 +20,10 @@ onMounted(() => {
     }
 })
 
-console.log(process.version);
-const sceneFiles = globSync("**/*.scene", {
-    cwd: getProjectPath("assets"),
-    absolute: true,
-});
-console.log(sceneFiles);
 const appRootDom = inject(keyAppRoot);
 const message = inject(keyMessage)!;
-/** 主项目 package.json 文件 */
-const packageJson = getPackageJson();
 /** 默认构建产出位置 */
-const buildDir = getProjectPath("build/" + packageJson.name);
+const buildDir = getProjectPath("build/" + Editor.Project.name);
 /** 临时构建配置文件路径 */
 const tempConfigPath = getProjectPath("temp/tempConfig.json");
 /** 获取场景目录 */
@@ -332,7 +324,7 @@ const bulkRef = ref<HTMLDivElement>(null);
 /** 构建失败日志列表 */
 const errLogList = ref([]);
 /** 构建输出路径 */
-const buildOutPutPath = ref<string>(packageJson.name);
+const buildOutPutPath = ref<string>(Editor.Project.name);
 
 watch(buildOutPutPath, val => {
     if (val) localStorage.setItem("buildOutPutPath", val);
