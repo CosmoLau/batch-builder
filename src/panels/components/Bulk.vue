@@ -12,13 +12,16 @@ import open from 'open';
 import { getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
 import { globSync } from 'glob/raw';
+import { hasUpdate } from '../scripts/checkUpdate';
 
-onMounted(() => {
+onMounted(async () => {
     let outputPath = localStorage.getItem("buildOutPutPath")
     if (outputPath != null) {
         buildOutPutPath.value = outputPath;
     }
+    canUpdate.value = await hasUpdate();
 })
+
 
 const appRootDom = inject(keyAppRoot);
 const message = inject(keyMessage)!;
@@ -287,6 +290,12 @@ function openFolderOrfile(path: string) {
             appendTo: appRootDom,
         });
     }
+}/** 跳转到发布页 */
+function linkToRelease() {
+    if (!canUpdate.value) return;
+    // 使用 window.open 会打开一个 Electron 窗口
+    // 所以这里模拟 el-link 点击来打开链接
+    (githubLink.value.$el as HTMLElement).click();
 }
 
 /** 构建类型 */
@@ -297,6 +306,7 @@ enum BuildType {
     MERGE,
 }
 
+/** 场景文件列表 */
 const sceneList = ref(getSceneDir());
 /** 单独构建选择的场景 */
 const selected = ref<string[]>([]);
@@ -325,6 +335,10 @@ const bulkRef = ref<HTMLDivElement>(null);
 const errLogList = ref([]);
 /** 构建输出路径 */
 const buildOutPutPath = ref<string>(Editor.Project.name);
+/** GitHub 发布页链接 */
+const githubLink = ref();
+/** 版本更新 */
+const canUpdate = ref<boolean>(false);
 
 watch(buildOutPutPath, val => {
     if (val) localStorage.setItem("buildOutPutPath", val);
@@ -419,8 +433,8 @@ watch(() => ruleForm.buildConfigPath, (val) => {
         <el-container style="height: 100%;">
             <el-header>
                 <h1>批量构建工具
-                    <el-badge is-dot :offset="[-3, 15]" hidden>
-                        <el-tag effect="plain" round>
+                    <el-badge is-dot :offset="[-3, 15]" :hidden="!canUpdate">
+                        <el-tag effect="plain" round @click="linkToRelease">
                             v{{ extensionPackage.version }}
                         </el-tag>
                     </el-badge>
@@ -523,8 +537,9 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                     </el-button>
                 </div>
             </el-main>
-            <el-footer>Made by <el-link href="https://github.com/CosmoLau"
-                    target="_blank">@CosmoLau</el-link></el-footer>
+            <el-footer>Made by <el-link href="https://github.com/CosmoLau" target="_blank">@CosmoLau</el-link> on
+                <el-link ref="githubLink" href="https://github.com/CosmoLau/batch-builder/releases/latest"
+                    target="_blank">GitHub</el-link></el-footer>
         </el-container>
     </div>
 </template>

@@ -11,6 +11,7 @@
     "engines": {
         "node": "20.15.1"
     },
+    "repository": "https://github.com/CosmoLau/batch-builder",
     "scripts": {
         "dev": "npm run build -- --mode development",
         "build": "vue-tsc -b && vite build"
