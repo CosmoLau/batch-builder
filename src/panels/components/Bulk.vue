@@ -9,10 +9,22 @@ import path from 'node:path';
 import { BuildConfig, BundleConfig } from '../../@types/build-config';
 import { FolderOpened, Document } from '@element-plus/icons-vue';
 import open from 'open';
-import { getProjectPath } from '../utils';
+import { absoluteToUrl, getProjectPath } from '../utils';
 import extensionPackage from '../../../package.json';
 import { globSync } from 'glob/raw';
 import { hasUpdate } from '../scripts/checkUpdate';
+
+/** 场景选项 */
+interface SceneItem {
+    /** 文件名 */
+    name: string,
+    /** `db://` 开头的路径 */
+    url: string,
+    /** 绝对路径 */
+    path: string,
+    /** 勾选 */
+    checked: boolean,
+}
 
 onMounted(async () => {
     let outputPath = localStorage.getItem("buildOutPutPath")
@@ -25,29 +37,27 @@ onMounted(async () => {
 
 const appRootDom = inject(keyAppRoot);
 const message = inject(keyMessage)!;
-/** 默认构建产出位置 */
-const buildDir = getProjectPath("build/" + Editor.Project.name);
 /** 临时构建配置文件路径 */
 const tempConfigPath = getProjectPath("temp/tempConfig.json");
 /** 获取场景目录 */
-function getSceneDir() {
+function getSceneDir(): SceneItem[] {
     const sceneFiles = globSync("**/*.scene", {
         cwd: getProjectPath("assets"),
         absolute: true,
+        ignore: [
+            "resources"
+        ]
     });
     let sceneList = sceneFiles.map(item => {
         let fileName = path.basename(item).replace('.scene', '');
-        let relativePath = "db://" + path.relative(getProjectPath(), item);
-        return {
-            /** 文件名 */
+        let url = absoluteToUrl(item);
+        let sceneItem: SceneItem = {
             name: fileName,
-            /** 相对路径 */
-            relative: relativePath,
-            /** 绝对路径 */
+            url: url,
             path: item,
-            /** 勾选 */
             checked: false,
         }
+        return sceneItem;
     })
     return sceneList;
 }
@@ -112,6 +122,25 @@ async function build() {
     let errCount = 0;
     /** 重试次数 */
     let retryTimes = 0;
+    /** 匹配对应的 Bundle 包 */
+    let matchBundle = async (name: string) => {
+        let matchDir = globSync(`**/${name}/`, {
+            cwd: getProjectPath("assets"),
+            absolute: true,
+            ignore: [
+                "resource"
+            ]
+        })
+        matchDir.filter(async dir => {
+            let meta = await Editor.Message.request(
+                'asset-db',
+                'query-asset-meta',
+                absoluteToUrl(dir)
+            );
+            return meta.userData?.isBundle;
+        })
+        return matchDir;
+    }
     let task = async (item: string) => {
         // 重试次数超过 4 次，结束构建
         if (retryTimes > 4) {
@@ -121,47 +150,69 @@ async function build() {
             progressStatus.value = 'exception';
             return;
         }
+        let sceneItem = sceneList.value.find(scene => scene.name == item);
         // 正式开始构建
-        const itemUuid = await Editor.Message.request('asset-db', 'query-uuid', `db://assets/scene/${item}.scene`);
-        const bundleUuid = await Editor.Message.request('asset-db', 'query-uuid', `db://assets/bundle/${item}`);
+        const itemUuid = await Editor.Message.request(
+            'asset-db',
+            'query-uuid',
+            sceneItem.url
+        );
+
         buildConfig.name = item;
         buildConfig.startScene = itemUuid;
         buildConfig.buildPath = `project://build`;
         buildConfig.outputName = buildOutPutPath.value + "/" + item;
         buildConfig.taskName = buildConfig.platform + '-' + item;
+        let bundleConfig: BundleConfig[] = [];
+        bundleConfig = buildConfig.bundleConfigs.filter((item) =>
+            item.name == "internal" ||
+            item.name == "main" ||
+            item.name == "resources"
+        );
         if (buildType.value == BuildType.INDIE) {
             buildConfig.scenes = [{
-                url: "db://assets/scene/" + item + ".scene",
+                url: sceneItem.url,
                 uuid: itemUuid,
             }];
-        }
-        else if (buildType.value == BuildType.MERGE) {
+            let matchDir = await matchBundle(item);
+            for (let dir of matchDir) {
+                let root = absoluteToUrl(dir);
+                let uuid = await Editor.Message.request(
+                    'asset-db',
+                    'query-uuid',
+                    root
+                );
+                bundleConfig.push({
+                    name: item,
+                    root: root,
+                    output: true,
+                    uuid: uuid,
+                })
+            }
+        } else if (buildType.value == BuildType.MERGE) {
             buildConfig.scenes = sceneList.value.map((item) => {
                 return {
-                    url: "db://assets/scene/" + item.name + ".scene",
+                    url: item.url,
                     uuid: itemUuid,
                 }
             })
-        }
-        let bundleConfig: BundleConfig[] = [];
-        bundleConfig = buildConfig.bundleConfigs.filter((item) => item.name == "internal" || item.name == "main" || item.name == "resources");
-        let bundleArr = sceneList.value.map((scene) => {
-            return {
-                name: scene.name,
-                root: `db://assets/bundle/${scene.name}`,
-                output: true,
-                uuid: bundleUuid,
+            for (let scene of sceneList.value) {
+                let matchDir = await matchBundle(scene.name);
+                for (let dir of matchDir) {
+                    let root = absoluteToUrl(dir);
+                    let uuid = await Editor.Message.request(
+                        'asset-db',
+                        'query-uuid',
+                        root
+                    );
+                    bundleConfig.push({
+                        name: scene.name,
+                        root: root,
+                        output: true,
+                        uuid: uuid,
+                    })
+                }
             }
-        })
-        if (buildType.value == BuildType.MERGE) {
-            bundleConfig.push(...bundleArr);
-        } else if (buildType.value == BuildType.INDIE) {
-            bundleConfig.push({
-                name: item,
-                root: `db://assets/bundle/${item}`,
-                output: true,
-                uuid: bundleUuid,
-            })
         }
         buildConfig.bundleConfigs = bundleConfig;
         let logName = item + `-${new Date().toLocaleString().replace(/[:\/\\]/g, '-')}.log`;
@@ -339,6 +390,8 @@ const buildOutPutPath = ref<string>(Editor.Project.name);
 const githubLink = ref();
 /** 版本更新 */
 const canUpdate = ref<boolean>(false);
+/** 主体区域加载 */
+const mainLoading = ref(false);
 
 watch(buildOutPutPath, val => {
     if (val) localStorage.setItem("buildOutPutPath", val);
@@ -440,7 +493,7 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                     </el-badge>
                 </h1>
             </el-header>
-            <el-main>
+            <el-main v-loading="mainLoading">
                 <el-form :disabled="buildButonState" label-position="left" label-width="180px" :model="ruleForm"
                     :rules="rules" ref="ruleFromRef">
                     <el-form-item label="Cocos 路径" prop="cocosFilePath">
@@ -484,7 +537,7 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                                 <span style="
                                 color: var(--el-text-color-secondary);
                                 font-size:small">
-                                    ({{ item.relative }})
+                                    ({{ item.url }})
                                 </span>
                             </el-option>
                         </el-select>
@@ -496,7 +549,7 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                                 <span style="
                                 color: var(--el-text-color-secondary);
                                 font-size:small">
-                                    ({{ item.relative }})
+                                    ({{ item.url }})
                                 </span>
                             </el-option>
                         </el-select>
