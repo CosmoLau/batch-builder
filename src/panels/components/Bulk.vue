@@ -4,7 +4,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import { inject, onMounted, reactive, ref, watch } from 'vue';
 import { CheckboxValueType, ElMessage, FormInstance, FormRules } from 'element-plus';
 import { keyAppRoot, keyMessage } from '../provide-inject';
-import { Box, Files } from '@element-plus/icons-vue';
+import { Box, Files, RefreshLeft } from '@element-plus/icons-vue';
 import path from 'node:path';
 import { BuildConfig, BundleConfig } from '../../@types/build-config';
 import { FolderOpened, Document } from '@element-plus/icons-vue';
@@ -225,7 +225,7 @@ async function build() {
             rmSync(outputPath, { recursive: true });
         }
         writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2), 'utf-8');
-        let command = `${cocosFilePath.value} --project ${getProjectPath()} --build "configPath=${tempConfigPath}"`;
+        let command = `${ruleForm.cocosFilePath} --project ${getProjectPath()} --build "configPath=${tempConfigPath}"`;
         console.log("命令行：", command);
         exec(command, () => {
             let logContent = readFileSync(buildConfig.logDest, 'utf-8');
@@ -348,6 +348,10 @@ function linkToRelease() {
     // 所以这里模拟 el-link 点击来打开链接
     (githubLink.value.$el as HTMLElement).click();
 }
+/** 重置 Cocos 路径 */
+function resetCocosPath() {
+    ruleForm.cocosFilePath = path.resolve(Editor.App.path, '../../CocosCreator.exe');
+}
 
 /** 构建类型 */
 enum BuildType {
@@ -364,8 +368,6 @@ const selected = ref<string[]>([]);
 /** 合并构建的初始场景 */
 const startScene = ref('');
 const buildType = ref(BuildType.INDIE);
-/** Cocos 主程序所在路径 */
-const cocosFilePath = ref(path.join(path.dirname(path.dirname(Editor.App.path)), 'CocosCreator.exe'));
 const checkAll = ref(false);
 const indeterminate = ref(false);
 const appRoot = ref(appRootDom);
@@ -445,6 +447,7 @@ const checkPath = (rule: any, value: any, callback: any) => {
     } else if (Editor.Utils.Path.basename(value) != "CocosCreator.exe") {
         callback(new Error('cocos 路径不正确'));
     } else {
+        localStorage.setItem('cocosFilePath', ruleForm.cocosFilePath);
         callback();
     }
 }
@@ -454,12 +457,13 @@ const checkBuildConfigPath = (rule: any, value: any, callback: any) => {
     } else if (!existsSync(value)) {
         callback(new Error('构建配置文件不存在'));
     } else {
+        localStorage.setItem('buildConfigPath', ruleForm.buildConfigPath);
         callback();
     }
 }
 const ruleForm = reactive({
     /** Cocos 主程序所在路径 */
-    cocosFilePath: path.join(path.dirname(path.dirname(Editor.App.path)), 'CocosCreator.exe'),
+    cocosFilePath: localStorage.getItem("cocosFilePath") || path.resolve(Editor.App.path, '../../CocosCreator.exe'),
     /** 构建配置文件路径 */
     buildConfigPath: getBuildConfigPath(),
 })
@@ -472,12 +476,6 @@ const rules = reactive<FormRules<typeof ruleForm>>({
         { required: true, message: '请选择构建配置文件', trigger: 'blur' },
         { validator: checkBuildConfigPath, trigger: 'blur' },
     ],
-})
-
-watch(() => ruleForm.buildConfigPath, (val) => {
-    if (val) {
-        localStorage.setItem('buildConfigPath', val);
-    }
 })
 </script>
 
@@ -498,6 +496,12 @@ watch(() => ruleForm.buildConfigPath, (val) => {
                     :rules="rules" ref="ruleFromRef">
                     <el-form-item label="Cocos 路径" prop="cocosFilePath">
                         <el-input v-model="ruleForm.cocosFilePath" type="text" placeholder="请输入cocos路径">
+                            <template #prepend>
+                                <el-tooltip content="重置为当前项目 Cocos 路径" :append-to="appRootDom" effect="light"
+                                    placement="bottom">
+                                    <el-button :icon="RefreshLeft" @click="resetCocosPath"></el-button>
+                                </el-tooltip>
+                            </template>
                             <template #append>
                                 <el-button :icon="Files" @click="selectCocosPath"></el-button>
                             </template>
