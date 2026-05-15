@@ -27,10 +27,6 @@ interface SceneItem {
 }
 
 onMounted(async () => {
-    let outputPath = localStorage.getItem("buildOutPutPath")
-    if (outputPath != null) {
-        buildOutPutPath.value = outputPath;
-    }
     canUpdate.value = await hasUpdate();
 })
 
@@ -387,7 +383,10 @@ const bulkRef = ref<HTMLDivElement>(null);
 /** 构建失败日志列表 */
 const errLogList = ref([]);
 /** 构建输出路径 */
-const buildOutPutPath = ref<string>(Editor.Project.name);
+const buildOutPutPath = ref<string>(
+    localStorage.getItem("buildOutPutPath") ||
+    Editor.Project.name
+);
 /** GitHub 发布页链接 */
 const githubLink = ref();
 /** 版本更新 */
