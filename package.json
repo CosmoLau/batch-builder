@@ -1,6 +1,6 @@
 {
     "name": "batch-builder",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "title": "i18n:batch-builder.title",
     "description": "批量构建工具",
     "editor": ">=3.8.7",
@@ -11,7 +11,10 @@
     "engines": {
         "node": "20.15.1"
     },
-    "repository": "https://github.com/CosmoLau/batch-builder",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/CosmoLau/batch-builder.git"
+    },
     "scripts": {
         "dev": "npm run build -- --mode development",
         "build": "vue-tsc -b && vite build"
