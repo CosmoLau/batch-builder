@@ -76,3 +76,15 @@ npm run build
 ## i18n
 
 本项目支持国际化，将文本写入 `i18n` 对应的语言文件中即可。
+
+## 赞助
+
+如果该项目对你有帮助，不妨点个 `star` 来支持我。
+
+[爱发电主页](https://www.ifdian.net/a/CosmoLau?utm_source=copylink&utm_medium=link)
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z31TPDA1)
+
+## LICENSE
+
+[MIT License](./LICENSE)
