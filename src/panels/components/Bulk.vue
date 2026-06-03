@@ -186,13 +186,16 @@ async function build() {
                 })
             }
         } else if (buildType.value == BuildType.MERGE) {
-            buildConfig.scenes = sceneList.value.map((item) => {
-                return {
-                    url: item.url,
-                    uuid: itemUuid,
-                }
-            })
+            let scenes = [];
             for (let scene of sceneList.value) {
+                scenes.push({
+                    url: scene.url,
+                    uuid: await Editor.Message.request(
+                        'asset-db',
+                        'query-uuid',
+                        scene.url
+                    ),
+                })
                 let matchDir = await matchBundle(scene.name);
                 for (let dir of matchDir) {
                     let root = absoluteToUrl(dir);
@@ -209,6 +212,7 @@ async function build() {
                     })
                 }
             }
+            buildConfig.scenes = scenes;
         }
         buildConfig.bundleConfigs = bundleConfig;
         let logName = item + `-${new Date().toLocaleString().replace(/[:\/\\]/g, '-')}.log`;
